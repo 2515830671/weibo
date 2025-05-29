@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  avatar    String?
+  bio       String?
+  location  String?
+  website   String?
+  coverImage String?
+  joinTime  DateTime @default(now())
+  
+  // 关联
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+  followers Follow[] @relation("following")
+  following Follow[] @relation("followers")
+  reports   Report[]
+  notifications NotificationReceiver[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  content   String
+  image     String?
+  
+  // 关联
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  comments  Comment[]
+  likes     Like[]
+  topics    TopicPost[]
+  reports   Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  
+  // 关联
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int
+  reports   Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  // 关联
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+}
+
+model Follow {
+  // 关联
+  follower    User     @relation("following", fields: [followerId], references: [id])
+  followerId  Int
+  following   User     @relation("followers", fields: [followingId], references: [id])
+  followingId Int
+
+  createdAt DateTime @default(now())
+
+  @@id([followerId, followingId])
+}
+
+model Topic {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique
+  category    String
+  description String?
+  
+  // 关联
+  posts       TopicPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TopicPost {
+  // 关联
+  topic     Topic    @relation(fields: [topicId], references: [id])
+  topicId   Int
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int
+
+  createdAt DateTime @default(now())
+
+  @@id([topicId, postId])
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  reason      String
+  description String?
+  status      String   @default("pending") // pending, resolved, rejected
+  
+  // 关联
+  reporter    User     @relation(fields: [reporterId], references: [id])
+  reporterId  Int
+  
+  // 可举报的内容类型
+  postId      Int?
+  post        Post?    @relation(fields: [postId], references: [id])
+  commentId   Int?
+  comment     Comment? @relation(fields: [commentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String   // like, comment, follow, mention
+  content   String
+  
+  // 关联
+  postId    Int?
+  receivers NotificationReceiver[]
+
+  createdAt DateTime @default(now())
+}
+
+model NotificationReceiver {
+  // 关联
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  notificationId Int
+  user          User         @relation(fields: [userId], references: [id])
+  userId        Int
+  isRead        Boolean      @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@id([notificationId, userId])
+} 
